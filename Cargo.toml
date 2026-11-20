@@ -1,0 +1,28 @@
+[package]
+name = "hello"
+version = "0.1.0"
+edition = "2024"
+rust-version = "1.97"
+description = "A starter Rust native application for Xila."
+license = "MIT"
+publish = false
+
+[features]
+guest = ["dep:xila-sys"]
+
+[dependencies]
+xila-sys = { git = "https://github.com/xila-project/core", rev = "623d3e9d3c13f2a8c531da3e50b15e10edd3b19e", optional = true, features = [
+  "link",
+] }
+
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = "s"
+# Keep LTO off with this SDK pin. It can cause rust-lld to put dynamic
+# metadata in the ABI note segment when all relocations are optimized away.
+lto = false
+codegen-units = 1
+strip = "symbols"

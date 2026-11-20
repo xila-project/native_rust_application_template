@@ -1,0 +1,61 @@
+name: CI
+on:
+  pull_request:
+  push:
+    branches: [main]
+permissions:
+  contents: read
+
+jobs:
+  quality:
+    uses: xila-project/workspace/.github/workflows/quality.yml@a2b2570fd670644d92d294ebad61152dffcd7fb1
+    with:
+      extra-task: ci:quality-extra
+
+  build:
+    name: Build (${{ matrix.target }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        target:
+          - x86_64-unknown-linux-gnu
+          - thumbv7em-none-eabihf
+          - riscv32imac-unknown-none-elf
+    env:
+      MISE_ENV: ci
+      XILA_SDK_TARGET: ${{ matrix.target }}
+    steps:
+      - name: "Setup | Checkout sources"
+        uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+      - name: "Setup | Activate mise"
+        uses: jdx/mise-action@v5.2.8
+      - name: "Lint | Native application"
+        run: mise run ci:clippy-guest
+      - name: "Build | Native application"
+        run: mise run build
+      - name: "Test | ELF loader contract"
+        run: mise run check
+
+  required:
+    name: required
+    if: always()
+    needs: [quality, build]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: "Gate | Verify required validations"
+        env:
+          QUALITY_RESULT: ${{ needs.quality.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          set -euo pipefail
+          for result in "$QUALITY_RESULT" "$BUILD_RESULT"; do
+            if [[ "$result" != success ]]; then
+              echo "::error::A required validation job finished with result: $result"
+              exit 1
+            fi
+          done
