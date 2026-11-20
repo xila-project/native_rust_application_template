@@ -12,4 +12,4 @@ dependencies = [
 [[package]]
 name = "xila-sys"
 version = "0.1.0"
-source = "git+https://github.com/xila-project/core?rev=623d3e9d3c13f2a8c531da3e50b15e10edd3b19e#623d3e9d3c13f2a8c531da3e50b15e10edd3b19e"
+source = "git+https://github.com/xila-project/core?rev=457d1a15eaecfb8c774e25825d86c321a39ba592#457d1a15eaecfb8c774e25825d86c321a39ba592"

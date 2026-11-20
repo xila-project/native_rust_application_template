@@ -58,14 +58,38 @@ XILA_SDK_TARGET=thumbv7em-none-eabihf mise run check
 | `thumbv7em-none-eabihf` | Arm Cortex-M4F, hard float |
 | `riscv32imac-unknown-none-elf` | RV32IMAC, soft float |
 
-`cargo xila-build` enables the `guest` feature and applies `.cargo/guest.toml`.
+`cargo xila-build` and `cargo xila-clippy` enable the `guest` feature and apply
+`.cargo/guest.toml`. Cargo resolves that config path relative to the current
+directory, so run the aliases from the repository root (from a subdirectory they
+fail to read the file). Always pass `--target` with one of the targets above:
+without it, the guest linker options also apply to host build scripts, and the
+build fails at link time.
+
+```sh
+cargo xila-build --locked --release --target thumbv7em-none-eabihf
+cargo xila-clippy --locked --release --target thumbv7em-none-eabihf -- -D warnings
+```
+
 Cargo's nightly `build-std` rebuilds `core`, `alloc` and `compiler_builtins`
 as position-independent code. Nightly also lets `xila-sys/link` forward the
 linker script and target arguments to the application. Keep the host test build
 separate with `cargo test --locked` and `cargo clippy --locked --all-targets`,
 which use the normal host sysroot without the guest feature. The ELF checker
 finds Core through locked Cargo metadata, so it checks against the same ABI
-revision used for the build.
+revision used for the build. That needs `xila-sys` from a Git checkout of Core
+(a `git` dependency, or a `[patch]` entry pointing at a Core clone); a path or
+vendored copy has no checker next to it and `mise run check` reports that. The
+checker also fails when the `rust-toolchain.toml` channel differs from the
+`nightly_version` of Core at the pinned revision.
+
+## Editor setup
+
+`mod guest` only exists with the `guest` feature, so rust-analyzer shows it as
+inactive by default. The repository ships `.vscode/settings.json` with
+`"rust-analyzer.cargo.features": ["guest"]`. In another editor, set the same
+option (`rust-analyzer.cargo.features = ["guest"]`). The host sysroot is enough
+for analysis: `cargo clippy --locked --all-targets --features guest` works
+without the guest sysroot. Real guest builds still go through `cargo xila-build`.
 
 ## Run through Core's host loader
 
