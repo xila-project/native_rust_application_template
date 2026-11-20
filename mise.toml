@@ -1,0 +1,41 @@
+[vars]
+host_target = "x86_64-unknown-linux-gnu"
+uv_version = "0.12.19"
+taplo_version = "0.10.0"
+actionlint_version = "1.7.7"
+shellcheck_version = "0.11.0"
+
+[tasks.build]
+description = "Build a native release ELF for XILA_SDK_TARGET"
+run = 'cargo xila-build --locked --release --target "${XILA_SDK_TARGET:-{{ vars.host_target }}}"'
+
+[tasks.check]
+description = "Check the built ELF against the pinned Core loader contract"
+tools.uv = "{{ vars.uv_version }}"
+run = 'uv run --no-project python scripts/check.py "${XILA_SDK_TARGET:-{{ vars.host_target }}}"'
+
+[tasks."ci:clippy-guest"]
+description = "Lint the native application for XILA_SDK_TARGET"
+run = 'cargo xila-clippy --locked --release --target "${XILA_SDK_TARGET:-{{ vars.host_target }}}" -- -D warnings'
+
+[tasks."ci:quality-extra"]
+description = "Check that host tests and Clippy work without the guest feature"
+run = [
+  "cargo test --locked",
+  "cargo clippy --locked --all-targets -- -D warnings",
+]
+
+[tasks."ci:format-rust"]
+description = "Check Rust formatting"
+run = "cargo fmt --all -- --check"
+
+[tasks."ci:format-toml"]
+description = "Check TOML formatting"
+tools.taplo = "{{ vars.taplo_version }}"
+run = "taplo format --check Cargo.toml mise.toml rust-toolchain.toml .cargo/*.toml"
+
+[tasks."ci:lint-workflows"]
+description = "Lint GitHub Actions workflows"
+tools."aqua:rhysd/actionlint" = "{{ vars.actionlint_version }}"
+tools."aqua:koalaman/shellcheck" = "{{ vars.shellcheck_version }}"
+run = "actionlint"

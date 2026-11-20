@@ -1,0 +1,4 @@
+[alias]
+# Apply the guest sysroot and linker options only to explicit guest builds.
+xila-build = ["build", "--config", ".cargo/guest.toml", "--features", "guest"]
+xila-clippy = ["clippy", "--config", ".cargo/guest.toml", "--features", "guest"]
