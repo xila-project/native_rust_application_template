@@ -18,11 +18,19 @@ run = 'uv run --no-project python scripts/check.py "${XILA_SDK_TARGET:-{{ vars.h
 description = "Lint the native application for XILA_SDK_TARGET"
 run = 'cargo xila-clippy --locked --release --target "${XILA_SDK_TARGET:-{{ vars.host_target }}}" -- -D warnings'
 
+[tasks."check:linked"]
+description = "Check the statically linked library entry with plain cargo (no nightly build-std, no guest linker config)"
+run = [
+  "cargo check --locked --lib --features linked",
+  "cargo clippy --locked --lib --features linked -- -D warnings",
+]
+
 [tasks."ci:quality-extra"]
-description = "Check that host tests and Clippy work without the guest feature"
+description = "Check that host tests, Clippy and the linked library work without the guest sysroot"
 run = [
   "cargo test --locked",
   "cargo clippy --locked --all-targets -- -D warnings",
+  "mise run check:linked",
 ]
 
 [tasks."ci:format-rust"]
