@@ -11,8 +11,12 @@
 Build a small `no_std` Rust application for the Xila embedded OS. The starter
 prints a greeting and its arguments to stdout. Pass `--fail` as the first
 argument to print a diagnostic to stderr and return status 1. A normal run
-returns 0, and a stream write failure returns 2. The build produces a plain
-static-PIE ELF.
+returns 0, and a stream write failure returns 2.
+
+The application body in `src/lib.rs` backs two native modes: the `guest`
+feature builds a loadable static-PIE ELF, and the `linked` feature builds a
+library whose entry mounts directly into Xila firmware. See
+[Two native modes](#two-native-modes).
 
 ## Requirements
 
@@ -27,8 +31,11 @@ Rustup's bundled `rust-lld`.
 
 1. Select **Use this template** on GitHub and clone your new repository, or
    clone this repository directly.
-2. Set the package name in `Cargo.toml` and run `cargo generate-lockfile`.
-3. Edit `src/main.rs` to implement your application.
+2. Set the package name in `Cargo.toml` and the matching `hello::` crate path in
+   `src/main.rs`, then run `cargo generate-lockfile`.
+3. Edit `src/lib.rs` to implement your application: its `run` backs both native
+   modes. `src/main.rs` only carries the guest entry shim, allocator and panic
+   handler.
 4. Replace the README header, `.github/brand/` assets and README footer with
    your project's own material. Update the copyright holder in `LICENSE` for
    your own work and retain the template's MIT notice as required.
@@ -82,12 +89,42 @@ vendored copy has no checker next to it and `mise run check` reports that. The
 checker also fails when the `rust-toolchain.toml` channel differs from the
 `nightly_version` of Core at the pinned revision.
 
+## Two native modes
+
+| Mode | Feature | Artifact | Entry |
+| --- | --- | --- | --- |
+| Loadable ELF | `guest` (set by `cargo xila-build`) | static-PIE ELF for the native loader | `_xila_start` in `src/main.rs` |
+| Statically linked | `linked` | library linked into the firmware | `hello::xila_entry` in `src/lib.rs` |
+
+The features are mutually exclusive: `xila-sys` rejects enabling its `link` and
+`linked` features together, so keep the `features = ["link"]` off the
+dependency line and let each mode turn its own `xila-sys` feature on.
+
+With `linked`, build the library with plain cargo on stable Rust: no nightly
+`build-std`, no guest linker config, no ELF note and no `_xila_start`, and no
+allocator or panic handler of its own (the firmware's apply).
+
+```sh
+mise run check:linked
+# cargo check --locked --lib --features linked
+# cargo clippy --locked --lib --features linked -- -D warnings
+```
+
+In a Xila firmware, mount the entry with the `xila` facade and then like any
+other executable with `mount_executables!`. The host hands each running program
+its own startup block, so several linked applications can run at once.
+
+```rust
+xila::executable::linked_executable!(unsafe Hello => hello::xila_entry, stack_size = 32 * 1024);
+```
+
 ## Editor setup
 
 `mod guest` only exists with the `guest` feature, so rust-analyzer shows it as
 inactive by default. The repository ships `.vscode/settings.json` with
 `"rust-analyzer.cargo.features": ["guest"]`. In another editor, set the same
-option (`rust-analyzer.cargo.features = ["guest"]`). The host sysroot is enough
+option (`rust-analyzer.cargo.features = ["guest"]`), or `["linked"]` to inspect
+`xila_entry` in `src/lib.rs`. The host sysroot is enough
 for analysis: `cargo clippy --locked --all-targets --features guest` works
 without the guest sysroot. Real guest builds still go through `cargo xila-build`.
 

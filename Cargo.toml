@@ -8,12 +8,14 @@ license = "MIT"
 publish = false
 
 [features]
-guest = ["dep:xila-sys"]
+# Loadable static-PIE ELF for the native loader. Mutually exclusive with `linked`:
+# `xila-sys` rejects enabling its `link` and `linked` features together.
+guest = ["dep:xila-sys", "xila-sys/link"]
+# Statically linked into the firmware, mounted with `xila::executable::linked_executable!`.
+linked = ["dep:xila-sys", "xila-sys/linked"]
 
 [dependencies]
-xila-sys = { git = "https://github.com/xila-project/core", rev = "457d1a15eaecfb8c774e25825d86c321a39ba592", optional = true, features = [
-  "link",
-] }
+xila-sys = { git = "https://github.com/xila-project/core", rev = "ac18ac3401b55289da50204ac297c7178b194695", optional = true }
 
 [profile.dev]
 panic = "abort"
